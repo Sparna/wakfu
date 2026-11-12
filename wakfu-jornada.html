@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jornada no Wakfu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Página de consulta durante o jogo: nível no topo, mapa ilustrado, linha do tempo com caixas, dicas e fontes. */
+:root{
+  --bg:#f3f1ea; --paper:#fffdf7; --ink:#1f2420; --mute:#5f675f; --line:#dcd7c8; --soft:#ebe7da;
+  --a1:#3f8a4c; --a1-soft:#e0efd9;   /* Primeiros passos: campos */
+  --a2:#2c6fa3; --a2-soft:#dceaf5;   /* Nações: mar e cidades */
+  --a3:#b0761a; --a3-soft:#f6e8cc;   /* Mundo afora: deserto */
+  --a4:#7a4bb3; --a4-soft:#ebe1f6;   /* Fim de jogo: dimensões */
+  --side:#a33f5c; --side-soft:#f6dfe6;
+  --ok:#2e7d4a; --warn:#9a6400; --warn-soft:#f6ead2;
+  --map:#f7f3e6; --path:#cdbf9b;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#121512; --paper:#1a1f1b; --ink:#e7eae4; --mute:#a0aa9f; --line:#2f3830; --soft:#222a23;
+  --a1:#73c482; --a1-soft:#1b2e1f; --a2:#73b2e6; --a2-soft:#172838; --a3:#e3ad55; --a3-soft:#352812; --a4:#b994ee; --a4-soft:#2a1f3b;
+  --side:#ec8aa6; --side-soft:#3a1d27; --ok:#6fd08f; --warn:#e6b45a; --warn-soft:#33280f;
+  --map:#171c18; --path:#4a4535; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#121512; --paper:#1a1f1b; --ink:#e7eae4; --mute:#a0aa9f; --line:#2f3830; --soft:#222a23;
+  --a1:#73c482; --a1-soft:#1b2e1f; --a2:#73b2e6; --a2-soft:#172838; --a3:#e3ad55; --a3-soft:#352812; --a4:#b994ee; --a4-soft:#2a1f3b;
+  --side:#ec8aa6; --side-soft:#3a1d27; --ok:#6fd08f; --warn:#e6b45a; --warn-soft:#33280f;
+  --map:#171c18; --path:#4a4535; color-scheme:dark }
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.55;margin:0}
+.wrap{max-width:1100px;margin:0 auto;padding-block:36px 80px;padding-inline:max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:52px}
+h1,h2,h3{font-family:var(--f-display);margin:0;line-height:1.12;text-wrap:balance}
+h1{font-size:clamp(2.1rem,5vw,3.3rem);font-weight:800;letter-spacing:-.015em}
+h2{font-size:1.6rem;font-weight:700}
+h3{font-size:1.08rem;font-weight:700}
+p{margin:0;max-width:70ch}
+a{color:var(--a2)}
+.eyebrow{font-family:var(--f-mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.lead{font-size:1.1rem;color:var(--mute)}
+.muted{color:var(--mute)} .small{font-size:.88rem}
+section{display:flex;flex-direction:column;gap:18px}
+.sec-head{display:flex;flex-direction:column;gap:6px}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--a2);outline-offset:2px;border-radius:6px}
+
+/* Cabeçalho */
+header{display:flex;flex-direction:column;gap:16px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.theme-btn{border:1px solid var(--line);background:var(--paper);border-radius:99px;padding:6px 14px;font-size:.88rem}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.fact{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.fact strong{font-family:var(--f-display);font-size:1.55rem;line-height:1.05}
+.fact span{font-size:.88rem;color:var(--mute)}
+.bar{height:8px;border-radius:99px;background:var(--soft);overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;background:var(--ok);width:0;transition:width .3s}
+
+/* Seu nível */
+.level-box{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:18px}
+.level-ctl{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.level-ctl label{font-family:var(--f-display);font-weight:700;font-size:1.1rem}
+.level-ctl input[type=range]{flex:1 1 260px;accent-color:var(--a2);min-width:0}
+.level-num{width:84px;font:inherit;font-family:var(--f-mono);font-size:1.1rem;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.act-tag{font-family:var(--f-mono);font-size:.78rem;padding:3px 10px;border-radius:99px;font-weight:600}
+.now-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.now-col{border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--bg);min-width:0}
+.now-col h3{font-size:1rem}
+.mini{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.mini li button{display:flex;gap:8px;align-items:baseline;width:100%;text-align:left;background:none;border:0;padding:4px 0;border-bottom:1px dashed var(--line)}
+.mini li:last-child button{border-bottom:0}
+.mini .lv{font-family:var(--f-mono);font-size:.78rem;color:var(--mute);flex:0 0 74px;white-space:nowrap}
+.mini .nm{flex:1;min-width:0}
+.empty{font-size:.9rem;color:var(--mute);font-style:italic}
+
+/* Mapa */
+.map-box{background:var(--map);border:1px solid var(--line);border-radius:16px;padding:8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.map-box svg{display:block;width:100%;min-width:780px;height:auto}
+.node{cursor:pointer}
+.node circle.dot{transition:r .15s}
+.node:hover circle.dot,.node:focus-visible circle.dot{r:21}
+.node:focus{outline:none}
+.node.future{opacity:.5}
+.pulse{transform-box:fill-box;transform-origin:center;animation:pulse 1.8s ease-out infinite}
+@keyframes pulse{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.9);opacity:0}}
+@media (prefers-reduced-motion: reduce){.pulse{animation:none;opacity:.35}}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:.86rem;color:var(--mute)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:50%;display:inline-block}
+
+/* Linha do tempo */
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:99px;overflow:hidden;background:var(--paper)}
+.seg button{border:0;background:none;padding:6px 14px;font-size:.9rem}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+.tog{display:inline-flex;align-items:center;gap:6px;font-size:.9rem;border:1px solid var(--line);border-radius:99px;padding:5px 12px;background:var(--paper);cursor:pointer}
+.tog input{accent-color:var(--a2)}
+.reset{margin-left:auto;border:1px solid var(--line);background:none;border-radius:99px;padding:5px 12px;font-size:.85rem;color:var(--mute)}
+.act{display:flex;flex-direction:column;gap:8px}
+.act-head{display:flex;align-items:center;gap:12px;padding:10px 0 4px;border-bottom:2px solid currentColor}
+.act-head h3{font-size:1.2rem}
+.act-head .range{font-family:var(--f-mono);font-size:.8rem;margin-left:auto}
+.act-icon{width:34px;height:34px;flex:0 0 34px}
+.rows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.row{display:grid;grid-template-columns:auto 76px 1fr auto;align-items:center;gap:12px;background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;padding:10px 12px}
+.row.now{border-left-color:var(--ok)}
+.row.done{opacity:.62}
+.row.done .rn{text-decoration:line-through;text-decoration-thickness:1px}
+.row input[type=checkbox]{width:20px;height:20px;accent-color:var(--ok);margin:0}
+.row .rl{font-family:var(--f-mono);font-size:.82rem;color:var(--mute)}
+.row .rn{font-weight:700;min-width:0}
+.row .rf{display:block;font-weight:400;font-size:.84rem;color:var(--mute);font-style:italic}
+.chips{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.chip{font-family:var(--f-mono);font-size:.7rem;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.c-main{background:var(--a2-soft);color:var(--a2)} .c-side{background:var(--side-soft);color:var(--side)} .c-dim{background:var(--a4-soft);color:var(--a4)}
+.c-unsure{background:var(--warn-soft);color:var(--warn)}
+.open-btn{border:1px solid var(--line);background:none;border-radius:8px;padding:4px 10px;font-size:.85rem}
+.row-main{background:none;border:0;padding:0;text-align:left;min-width:0}
+@media (max-width:640px){
+  .row{grid-template-columns:auto 1fr;grid-template-areas:"ck lv" "ck nm" "ch ch"}
+  .row input{grid-area:ck;align-self:start;margin-top:3px}
+  .row .rl{grid-area:lv} .row .row-main{grid-area:nm} .row .chips{grid-area:ch;justify-content:flex-start}
+}
+
+/* Dicas */
+.tips{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.tip{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.tip svg{width:30px;height:30px}
+.tip p{font-size:.95rem}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.panel ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.panel li{font-size:.95rem}
+.note{background:var(--warn-soft);border-radius:10px;padding:12px 14px;font-size:.92rem}
+.sources{font-size:.88rem;color:var(--mute);display:flex;flex-direction:column;gap:6px}
+.sources ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+.sources a{word-break:break-word}
+footer{font-size:.85rem;color:var(--mute);border-top:1px solid var(--line);padding-top:16px}
+kbd{font-family:var(--f-mono);font-size:.8em;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--paper)}
+
+/* Ficha lateral */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;height:100%;width:min(440px,100%);background:var(--paper);border-left:1px solid var(--line);z-index:21;transform:translateX(100%);transition:transform .25s ease;display:flex;flex-direction:column;box-shadow:-8px 0 30px rgba(0,0,0,.15)}
+.drawer.on{transform:none}
+.dr-head{padding:20px 20px 14px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--line);position:relative}
+.dr-head .close{position:absolute;top:14px;right:14px;border:1px solid var(--line);background:var(--bg);border-radius:99px;width:34px;height:34px;font-size:1.1rem;line-height:1}
+.dr-head h2{font-size:1.45rem;padding-right:40px}
+.dr-fr{font-style:italic;color:var(--mute)}
+.dr-body{padding:18px 20px 28px;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
+.dr-body dl{margin:0;display:flex;flex-direction:column;gap:12px}
+.dr-body dt{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.dr-body dd{margin:2px 0 0}
+.dr-done{display:flex;align-items:center;gap:10px;font-weight:700;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
+.dr-done input{width:20px;height:20px;accent-color:var(--ok)}
+.dr-nav{display:flex;justify-content:space-between;gap:8px}
+.dr-nav button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 12px;font-size:.88rem}
+@media (max-width:640px){
+  .drawer{top:auto;bottom:0;height:86%;width:100%;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;transform:translateY(100%)}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="top">
+    <div class="eyebrow">Wakfu · versão 1.93 · nível máximo 245 · dados de 11/11/2026</div>
+    <button class="theme-btn" id="themeBtn" type="button" title="Atalho: D">Modo escuro</button>
+  </div>
+  <h1>Jornada no Wakfu</h1>
+  <p class="lead">O que fazer em cada nível, do tutorial em Rii até a Île des Brumes. A ordem segue as quests principais do Method Wakfu, com as secundárias que valem a pena. Escolha seu nível, marque o que já fez e clique em qualquer etapa para ver a ficha dela.</p>
+  <div class="facts">
+    <div class="fact"><strong id="fLevel">—</strong><span>seu nível agora</span></div>
+    <div class="fact"><strong id="fMain">0 / 0</strong><span>quests principais feitas</span><div class="bar"><i id="bMain"></i></div></div>
+    <div class="fact"><strong id="fSide">0 / 0</strong><span>secundárias feitas</span><div class="bar"><i id="bSide"></i></div></div>
+    <div class="fact"><strong id="fNow">0</strong><span>pendentes até o seu nível</span></div>
+  </div>
+</header>
+
+<section id="nivel">
+  <div class="sec-head">
+    <div class="eyebrow">Seu nível</div>
+    <h2>O que fazer agora</h2>
+  </div>
+  <div class="level-box">
+    <div class="level-ctl">
+      <label for="lvRange">Nível</label>
+      <input type="range" id="lvRange" min="1" max="245" value="1">
+      <input type="number" id="lvNum" class="level-num" min="1" max="245" value="1" aria-label="Nível em número">
+      <span class="act-tag" id="actTag">—</span>
+    </div>
+    <div class="now-grid">
+      <div class="now-col"><h3>Faça agora</h3><ul class="mini" id="listNow"></ul></div>
+      <div class="now-col"><h3>Logo à frente (até +20 níveis)</h3><ul class="mini" id="listNext"></ul></div>
+      <div class="now-col"><h3>Para upar nesta faixa</h3><div id="xpTip" class="small"></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="mapa">
+  <div class="sec-head">
+    <div class="eyebrow">Mapa da jornada</div>
+    <h2>A história principal, etapa por etapa</h2>
+    <p class="muted">Cada círculo é uma quest principal, com o nível de início dentro dele. Siga a trilha da esquerda para a direita, descendo como num tabuleiro. O alfinete marca o seu nível, e os círculos pulsando são etapas já liberadas que você ainda não fez.</p>
+  </div>
+  <div class="map-box"><svg id="map" viewBox="0 0 1000 640" role="img" aria-label="Mapa com as quests principais do Wakfu em ordem de nível"></svg></div>
+  <div class="legend" id="legend"></div>
+</section>
+
+<section id="linha">
+  <div class="sec-head">
+    <div class="eyebrow">Linha do tempo completa</div>
+    <h2>Principais, dimensões e secundárias</h2>
+    <p class="muted">As caixas marcadas ficam salvas neste navegador. Os itens com <span class="chip c-unsure">a confirmar</span> vieram de um resumo do catálogo do WakfuLabs, e não da página da própria quest; confira o nível no jogo.</p>
+  </div>
+  <div class="filters">
+    <div class="seg" role="group" aria-label="Tipo">
+      <button type="button" data-f="all" aria-pressed="true">Tudo</button>
+      <button type="button" data-f="main" aria-pressed="false">Principais</button>
+      <button type="button" data-f="side" aria-pressed="false">Secundárias</button>
+    </div>
+    <label class="tog"><input type="checkbox" id="hideDone"> Esconder feitas</label>
+    <label class="tog"><input type="checkbox" id="nearOnly"> Só até meu nível +20</label>
+    <button type="button" class="reset" id="resetBtn">Zerar marcações</button>
+  </div>
+  <div id="timeline" style="display:flex;flex-direction:column;gap:26px"></div>
+</section>
+
+<section id="dicas">
+  <div class="sec-head">
+    <div class="eyebrow">Dicas</div>
+    <h2>Regras que valem o jogo todo</h2>
+  </div>
+  <div class="tips" id="tips"></div>
+</section>
+
+<section id="fim">
+  <div class="two">
+    <div class="panel">
+      <div class="eyebrow">Fim de jogo</div>
+      <h3>Dungeons para upar do 186 ao 245</h3>
+      <ul>
+        <li><b>Tombeau de Pandala</b> (186–200), na Pandalousie.</li>
+        <li><b>Primassifs</b> (231–245), no Cosmo Canyon da Île des Brumes.</li>
+        <li><b>Clan de Bworkana</b> (231+).</li>
+        <li><b>Machines de Nox</b>, <b>Savanestraux</b> e <b>Férociraptors</b> (231–245), pelo guia de XP do Method.</li>
+      </ul>
+      <p class="small muted">A Île des Brumes tem seis territórios, cada um com uma dungeon.</p>
+    </div>
+    <div class="panel">
+      <div class="eyebrow">O que mudou</div>
+      <h3>Novidades recentes</h3>
+      <ul>
+        <li><b>1.86, Île des Brumes:</b> nível máximo passou para 245, com seis dungeons novas.</li>
+        <li><b>1.92 (16/06/2026), Havre-Enclos:</b> espaço pessoal novo. Os arquimonstros passaram a ser enfrentados em dungeon competitiva, ativando estelas.</li>
+        <li><b>1.93 (atual, 1.93.1):</b> mais de 25 famílias novas, Porte-Bonheurs e mais de 90 criaturas para criar no Havre-Enclos.</li>
+        <li><b>Anunciado:</b> uma classe nova para o fim de 2026, em Dofus, Dofus Touch e Wakfu.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="sources" id="fontes">
+  <div class="eyebrow">Fontes</div>
+  <p>As páginas do Method Wakfu bloqueiam leitura automática. Por isso os níveis vieram do título de cada página de quest e de buscas, e o resto do catálogo do WakfuLabs. Recompensas em XP mudam com o seu nível e com os patches.</p>
+  <ul>
+    <li><a href="https://methodwakfu.com/category/quetes/principales/" target="_blank" rel="noopener">Method Wakfu – Quêtes Principales</a></li>
+    <li><a href="https://methodwakfu.com/annexes/" target="_blank" rel="noopener">Method Wakfu – Quêtes Annexes</a></li>
+    <li><a href="https://methodwakfu.com/bien-debuter/avant-propos-comment-xp/" target="_blank" rel="noopener">Method Wakfu – Avant-propos : comment xp ?</a> · <a href="https://methodwakfu.com/bien-debuter/niveau-0-95/" target="_blank" rel="noopener">XP 0–95</a> · <a href="https://methodwakfu.com/bien-debuter/niveau-96-170/" target="_blank" rel="noopener">96–170</a> · <a href="https://methodwakfu.com/bien-debuter/niveau-171-245/" target="_blank" rel="noopener">171–245</a></li>
+    <li><a href="https://wakfulabs.com/quests/" target="_blank" rel="noopener">WakfuLabs – catálogo de quests</a></li>
+    <li><a href="https://www.jeuxonline.info/actualite/64936/wakfu-ile-brumes-debarque-nouveaux-defis-boss-legendaire" target="_blank" rel="noopener">JeuxOnLine – Île des Brumes</a> · <a href="https://www.jeuxonline.info/video/21745/wakfu-presente-nouvelle-feature-havre-enclos" target="_blank" rel="noopener">Havre-Enclos</a></li>
+    <li><a href="https://steamcommunity.com/app/215080/announcements/?l=french" target="_blank" rel="noopener">Steam – anúncios do Wakfu</a></li>
+  </ul>
+</section>
+
+<footer>Atalhos: <kbd>D</kbd> alterna o modo escuro · <kbd>Esc</kbd> fecha a ficha · <kbd>←</kbd> <kbd>→</kbd> passam de etapa com a ficha aberta.</footer>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drTitle" aria-hidden="true">
+  <div class="dr-head">
+    <button class="close" id="drClose" type="button" aria-label="Fechar">×</button>
+    <div class="eyebrow" id="drEye"></div>
+    <h2 id="drTitle"></h2>
+    <div class="dr-fr" id="drFr"></div>
+    <div class="chips" id="drChips" style="justify-content:flex-start"></div>
+  </div>
+  <div class="dr-body">
+    <label class="dr-done"><input type="checkbox" id="drCheck"> Já fiz esta etapa</label>
+    <dl id="drDl"></dl>
+    <div id="drLink"></div>
+    <div class="dr-nav"><button type="button" id="drPrev">← Anterior</button><button type="button" id="drNext">Próxima →</button></div>
+  </div>
+</aside>
+
+<script>
+/* ---------- Dados ----------
+   t: main (principal), dim (dimensão, faz parte da história), side (secundária)
+   lv: nível de início · to: nível final quando a fonte dá · u: true = a confirmar (veio do resumo do catálogo) */
+const MW = "https://methodwakfu.com/quetes/";
+const WL = "https://wakfulabs.com/quests/";
+const Q = [
+  {id:"rii", t:"main", lv:1, to:6, s:"Rii", pt:"Tutorial e Rii, a ilha celeste", fr:"Didacticiel · Rii, l'île céleste",
+   o:"O tutorial do jogo e a primeira história, na ilha celeste de Rii (9 quests).", req:"Nenhum.", rec:"XP, títulos, objetos e 9 500 kamas.", dica:"Faça tudo antes de descer: o resto da história parte daqui.", src:WL},
+  {id:"astrub", t:"main", lv:6, to:35, s:"Astrub", pt:"Prólogo de Astrub", fr:"Prologue d'Astrub",
+   o:"A cidade mercenária. Inclui Astrub, la cité Mercenaire (1), À la rescousse du Chevalier d'Astrub (8), Le Culte d'Ogrest ? (9), Salles Obscures (10) e Tour d'Astrub (35).", req:"Rii.", rec:"XP, objetos, cerca de 100 mil kamas e recompensas especiais.", dica:"O Method recomenda seguir as principais em ordem de nível. Salles Obscures (10) libera a Plage du Zinit, e a Tour d'Astrub (35) libera o Havre-Enclos.", src:MW+"principales/astrub/"},
+  {id:"amakna", t:"main", lv:20, s:"Amakna", pt:"Nações, cap. 2: Amakna", fr:"Nations – Chapitre 2 : Amakna",
+   o:"Abre a linha das Nações (19 quests).", req:"À la recherche de l'artefact perdu.", rec:"XP, títulos, kamas e objetos.", dica:"Apesar do número, o capítulo 2 vem antes do 1 na ordem de nível.", src:MW+"principales/amakna/"},
+  {id:"zinitp", t:"main", lv:21, s:"Plage Zinit", pt:"Nações, cap. 1: praia do Zinit", fr:"Nations – Chapitre 1 : la plage du Zinit",
+   o:"A praia do Zinit (8 quests).", req:"Salles Obscures (Astrub).", rec:"XP, objetos, kamas e recompensas especiais.", dica:"Dá para fazer junto com Amakna, os níveis são quase iguais.", src:WL},
+  {id:"bonta", t:"main", lv:25, s:"Bonta", pt:"Nações, cap. 3: Bonta", fr:"Chapitre 3 - Bonta",
+   o:"Gira em torno da Université Bontarienne Immatérielle (20 quests).", req:"Capítulos anteriores das Nações.", rec:"XP, kamas e objetos.", dica:"", src:MW+"principales/bonta/"},
+  {id:"brakmar", t:"main", lv:35, s:"Brâkmar", pt:"Nações, cap. 4: Brâkmar", fr:"Chapitre 4 - Brâkmar",
+   o:"O capítulo de Brâkmar.", req:"Bonta.", rec:"XP, kamas e objetos.", dica:"", src:MW+"principales/brakmar/"},
+  {id:"ereboria", t:"main", lv:36, to:51, s:"Ereboria", pt:"Ereboria", fr:"Ereboria",
+   o:"A história de Ereboria. As missões (MDC) começam falando com os NPCs, em qualquer ordem.", req:"—", rec:"XP, kamas e objetos.", dica:"Não precisa seguir uma ordem fixa entre as MDCs. No 215 voltam as MDCs de fim de jogo de Ereboria.", src:MW+"principales/ereboria/"},
+  {id:"sufokia", t:"main", lv:45, s:"Sufokia", pt:"Nações, cap. 5: Sufokia", fr:"Chapitre 5 - Sufokia",
+   o:"O final das Nações. Abre o templo submerso de Oktapodas.", req:"Brâkmar.", rec:"XP, kamas, objetos e acesso ao templo de Oktapodas.", dica:"", src:MW+"principales/sufokia/"},
+  {id:"zinit1", t:"main", lv:45, to:145, u:true, s:"Zinit I", pt:"Mont Zinit, parte 1", fr:"Mont Zinit – Première partie",
+   o:"Primeira parte da história do Mont Zinit (25 quests), que avança ao longo de muitos níveis.", req:"—", rec:"XP e objetos.", dica:"Ela continua no 145 (parte 2) e no 186 (parte 3).", src:WL},
+  {id:"domaine", t:"main", lv:50, u:true, s:"Dom. Sauvage", pt:"Domínio Selvagem", fr:"Quête du Domaine Sauvage",
+   o:"História do Domaine Sauvage (24 quests).", req:"—", rec:"XP e objetos.", dica:"", src:WL},
+  {id:"kelba", t:"main", lv:65, s:"Kelba", pt:"Kelba, capítulos 1 e 2", fr:"Kelba",
+   o:"A ilha de Kelba (16 + 9 quests).", req:"—", rec:"XP, kamas e objetos.", dica:"", src:MW+"principales/kelba/"},
+  {id:"bilbyza", t:"main", lv:85, s:"Bilbyza", pt:"Bilbyza", fr:"Bilbyza",
+   o:"Quest festiva para a faixa de 81 a 110 (14 quests).", req:"—", rec:"XP, kamas e objetos.", dica:"", src:MW+"principales/bilbyza/"},
+  {id:"chuchoku", t:"main", lv:96, s:"Chuchoku", pt:"Reino Chuchoku", fr:"Royaume Chuchoku",
+   o:"A história do Reino Chuchoku.", req:"—", rec:"XP, kamas e objetos.", dica:"No 201 o reino ganha MDCs de fim de jogo com muito XP.", src:MW+"principales/royaume-chuchoku/"},
+  {id:"sberg", t:"main", lv:100, u:true, s:"Sberg", pt:"Ilha Sberg", fr:"Quête principale de l'Île Sberg",
+   o:"A história da ilha Sberg (19 quests).", req:"—", rec:"XP e objetos.", dica:"Junto vêm as secundárias de Sberg (100–110).", src:WL},
+  {id:"saharach", t:"main", lv:115, s:"Saharach", pt:"Saharach", fr:"Saharach",
+   o:"A história do deserto do Saharach (32 quests).", req:"—", rec:"XP, kamas e objetos.", dica:"", src:MW+"principales/saharach/"},
+  {id:"wabbits", t:"main", lv:120, to:141, s:"Wabbits", pt:"Ilha dos Wabbits", fr:"Île des Wabbits",
+   o:"A ilha dos Wabbits, do 120 ao 141. Algumas etapas só liberam no 126 e no 141.", req:"—", rec:"XP, kamas e objetos.", dica:"Volte no 126 e no 141 para as etapas que ficaram travadas.", src:MW+"principales/ile-des-wabbits/"},
+  {id:"shukrute", t:"dim", lv:125, u:true, s:"Shukrute", pt:"Dimensão Shukrute", fr:"Dimension Shukrute",
+   o:"Quest da dimensão Shukrute.", req:"—", rec:"Necessária para a Île des Brumes.", dica:"Não deixe para trás: sem ela, a Île des Brumes (230) não abre.", src:WL},
+  {id:"elio", t:"main", lv:126, to:186, s:"Éliocalypse", pt:"Éliocalypse, capítulos 1 e 2", fr:"Éliocalypse",
+   o:"Cadeia longa, do 126 ao 186.", req:"—", rec:"XP e objetos. Necessária para a Île des Brumes.", dica:"Comece cedo e vá avançando: ela é pré-requisito da Île des Brumes.", src:WL},
+  {id:"voyageuse", t:"main", lv:140, s:"Voyageuse", pt:"A Viajante, prelúdio", fr:"La Voyageuse - Prélude",
+   o:"Abre a história das Dimensões Divinas (12 quests).", req:"—", rec:"XP e acesso às Dimensões Divinas.", dica:"Faça antes de Srambad e Enutrosor.", src:MW+"principales/la-voyageuse-prelude/"},
+  {id:"srambad", t:"dim", lv:140, u:true, s:"Srambad", pt:"Dimensão Divina de Srambad", fr:"Dimension divine de Srambad",
+   o:"Dimensão Divina de Srambad (19 quests).", req:"La Voyageuse – Prélude.", rec:"XP e objetos.", dica:"", src:WL},
+  {id:"enutrosor", t:"dim", lv:145, u:true, s:"Enutrosor", pt:"Dimensão Divina de Enutrosor", fr:"Dimension divine d'Enutrosor",
+   o:"Dimensão Divina de Enutrosor (11 quests).", req:"La Voyageuse – Prélude.", rec:"XP e objetos.", dica:"", src:WL},
+  {id:"zinit2", t:"main", lv:145, to:186, u:true, s:"Zinit II", pt:"Mont Zinit, parte 2", fr:"Mont Zinit – Deuxième partie",
+   o:"Segunda parte do Mont Zinit (17 quests).", req:"Mont Zinit, parte 1.", rec:"XP e objetos.", dica:"", src:WL},
+  {id:"xelop", t:"dim", lv:155, u:true, s:"Xélo Passé", pt:"Xélorium Passado", fr:"Xélorium Passé",
+   o:"O Xélorium no passado (10 quests).", req:"—", rec:"XP e objetos.", dica:"Faça antes do Xélorium Presente.", src:WL},
+  {id:"pourpre", t:"main", lv:156, u:true, s:"Dofus Pourpre", pt:"Dofus Púrpura", fr:"Quête du Dofus Pourpre",
+   o:"Quest do Dofus Pourpre (7 quests).", req:"—", rec:"Objetos.", dica:"", src:WL},
+  {id:"xelo", t:"dim", lv:160, s:"Xélo Présent", pt:"Xélorium Presente", fr:"Xélorium Présent",
+   o:"O Xélorium no presente (12 quests).", req:"Xélorium Passé.", rec:"XP e objetos.", dica:"", src:MW+"principales/"},
+  {id:"dunil", t:"main", lv:178, u:true, s:"Dunîl", pt:"A história de Dunîl", fr:"L'Histoire Dunîl",
+   o:"A história de Dunîl (6 quests).", req:"—", rec:"XP e objetos.", dica:"", src:WL},
+  {id:"foulmoon", t:"main", lv:180, s:"Foul Moon", pt:"Relíquia de Foul Moon", fr:"Relique de Foul Moon",
+   o:"Quest da relíquia de Foul Moon (6 quests).", req:"—", rec:"Objetos (relíquia).", dica:"No mesmo nível ficam os Archimonstres de Moon.", src:WL},
+  {id:"zinit3", t:"main", lv:186, s:"Zinit III", pt:"Mont Zinit, parte 3", fr:"Mont Zinit – Troisième partie",
+   o:"Terceira parte do Mont Zinit (14 quests).", req:"Si le cœur vous en dit.", rec:"XP, kamas, objetos e títulos.", dica:"Libera as secundárias do Mont Zinit no 186 (Dor'Mor, Blérox, Dragoeufs, Éthernels).", src:WL},
+  {id:"nogord", t:"main", lv:190, to:195, s:"Nogord", pt:"Nogord, o Ezarélé", fr:"Quête de Nogord l'Ezarélé",
+   o:"Quest de Nogord (6 quests).", req:"—", rec:"Relíquia Dofus Prismatique.", dica:"Depois da conquista de Nogord, fale com o velho no presente para receber o Dofus Prismatique.", src:MW+"annexes/quetes-boss-ultime/"},
+  {id:"brumes", t:"main", lv:230, to:245, s:"Île des Brumes", pt:"Ilha das Brumas", fr:"Île des Brumes",
+   o:"A zona da 1.86: seis territórios, cada um com uma dungeon. A quest para achar a ilha abre no 230, e a principal da ilha é de nível 231 (7 quests, incluindo a Chasse aux Boss 231 à 245).", req:"Éliocalypse e Shukrute concluídas.", rec:"XP, acesso à ilha e às suas dungeons.", dica:"Confira Éliocalypse e Shukrute antes de chegar no 230.", src:WL},
+  {id:"osamosa", t:"main", lv:245, s:"Osamosa", pt:"Santuários e Golens de Osamosa", fr:"Sanctuaires et Golems d'Osamosa",
+   o:"Série de nível máximo: lutas contra golens em cada zona da Île des Brumes.", req:"Île des Brumes.", rec:"Objetos e XP.", dica:"", src:WL},
+
+  /* Secundárias */
+  {id:"mercen", t:"side", lv:6, to:21, s:"Mercenários", pt:"Balcões de Mercenários de Astrub", fr:"Comptoirs de Mercenaires d'Astrub",
+   o:"Contratos dos balcões de mercenários de Astrub (inclui Égouts e Plaines).", req:"—", rec:"XP, objetos e kamas.", dica:"Bom complemento enquanto faz o Prólogo de Astrub.", src:WL},
+  {id:"tristepin", t:"side", lv:9, to:21, s:"Tristepin", pt:"O treino de Tristepin", fr:"L'entraînement de Tristepin",
+   o:"29 quests de treino.", req:"—", rec:"XP e objetos.", dica:"XP fácil no começo.", src:WL},
+  {id:"almanax", t:"side", lv:10, s:"Almanax", pt:"Almanax", fr:"Almanax · 50 nuances d'Almanax",
+   o:"Quest diária do Almanax, mais a cadeia 50 nuances d'Almanax.", req:"—", rec:"XP e kamas todos os dias.", dica:"Faça todo dia a partir do nível 10: é o hábito que mais rende ao longo do jogo.", src:WL},
+  {id:"confrerie", t:"side", lv:15, s:"Confrérie", pt:"A Confraria", fr:"Quêtes – La Confrérie",
+   o:"Cadeia curta de caça a recompensas. A primeira etapa não dá nada; o prêmio vem na última.", req:"—", rec:"5 384 XP, 3 000 kamas, um título e um emote exclusivo.", dica:"Vale pelo emote e pelo título.", src:MW+"annexes/quetes-la-confrerie/"},
+  {id:"ruel", t:"side", lv:15, s:"Ruel", pt:"Ruel, o caçador de recompensas", fr:"Ruel – Le chasseur de primes",
+   o:"4 quests com o Ruel.", req:"—", rec:"XP, títulos, kamas e recompensas especiais.", dica:"", src:WL},
+  {id:"otomai", t:"side", lv:20, to:230, s:"Otomaï", pt:"Discípulos de Otomaï", fr:"Disciples d'Otomaï – Une vie de chasseur",
+   o:"Cadeia que acompanha o jogo inteiro, do 20 ao 230.", req:"—", rec:"O XP escala com o seu nível (no 230 a primeira etapa dá cerca de 405 milhões) e há peças do conjunto Éclaireurs d'Otomaï.", dica:"Comece no 20 e volte sempre que subir de faixa: é a cadeia que mais rende no jogo.", src:MW+"annexes/quete-disciple-dotomai/"},
+  {id:"miniarch", t:"side", lv:20, to:200, s:"Archimonstres", pt:"Miniarch e os Arquimonstros", fr:"Miniarch et les Archimonstres",
+   o:"56 quests de arquimonstros. Desde a 1.92 eles também aparecem em dungeon competitiva, ativando estelas.", req:"—", rec:"XP e objetos.", dica:"", src:WL},
+  {id:"enclos", t:"side", lv:20, u:true, s:"Havre-Enclos", pt:"Liberar o Havre-Enclos", fr:"Débloquer le Havre-Enclos",
+   o:"Libera o Havre-Enclos, o espaço pessoal da 1.92, onde se criam as criaturas novas da 1.93.", req:"Tour d'Astrub.", rec:"Objetos e acesso ao Havre-Enclos.", dica:"O catálogo mostra 20 e 200 em lugares diferentes; como depende da Tour d'Astrub (35), na prática abre depois dela.", src:WL},
+  {id:"huppermage", t:"side", lv:30, to:130, u:true, s:"Huppermagia", pt:"Escola de Huppermagia", fr:"École d'Huppermagie",
+   o:"20 quests da escola de Huppermagia.", req:"—", rec:"XP e objetos.", dica:"", src:WL},
+  {id:"dragodinde", t:"side", lv:35, u:true, s:"Dragodinde", pt:"Conseguir a Dragodinde", fr:"Obtenir sa Dragodinde",
+   o:"12 quests para conseguir a montaria.", req:"—", rec:"Montaria (Dragodinde).", dica:"Prioridade: andar montado economiza muito tempo.", src:WL},
+  {id:"bossult", t:"side", lv:71, to:200, s:"Boss Ultimes", pt:"Chefes Supremos", fr:"Quêtes – Boss Ultimes",
+   o:"Quests dos chefes supremos, abrindo entre o 71 e o 200. Algumas dão relíquias e cosméticos em vez de XP.", req:"—", rec:"Relíquias e cosméticos (ex.: Dofus Prismatique pela quest de Nogord).", dica:"Faça cada uma assim que a faixa abrir.", src:MW+"annexes/quetes-boss-ultime/"},
+  {id:"sbergs", t:"side", lv:100, to:110, s:"Sberg (sec.)", pt:"Secundárias de Sberg", fr:"Quêtes – Sberg",
+   o:"Secundárias da ilha Sberg.", req:"—", rec:"XP e kamas.", dica:"", src:MW+"annexes/quetes-sberg/"},
+  {id:"pandalousie", t:"side", lv:141, to:186, s:"Pandalousie", pt:"Pandalousie: Pelo Bambu Sagrado!", fr:"Pandalousie – Par le Bambou sacré !",
+   o:"Cadeias da Pandalousie em três faixas: 141, 171 e 186.", req:"—", rec:"Muito XP, kamas e fichas Précieux, Mystique e Éternel (no topo, 128 milhões de XP e 8 fichas Éternel).", dica:"Volte no 171 e no 186 para as faixas seguintes.", src:MW+"annexes/quetes-pandalousie-par-le-bambou-sacre/"},
+  {id:"moonarch", t:"side", lv:180, s:"Archi Moon", pt:"Arquimonstros de Moon", fr:"Archimonstres de Moon",
+   o:"3 quests de arquimonstros na ilha de Moon.", req:"—", rec:"Objetos.", dica:"Junte com a Relique de Foul Moon.", src:WL},
+  {id:"zinitside", t:"side", lv:186, s:"Zinit 186", pt:"Secundárias do Mont Zinit", fr:"Grotte du Dor'Mor · Blérox · Dragoeufs · Éthernels",
+   o:"Quatro grupos de 5 quests no Mont Zinit, mais Ils nous ont quittés e La forêt de feu.", req:"Mont Zinit, parte 3.", rec:"Objetos, XP e kamas.", dica:"", src:WL},
+  {id:"chuchokumdc", t:"side", lv:201, s:"Chuchoku MDC", pt:"MDCs do Reino Chuchoku", fr:"Quêtes – Royaume Chuchoku – MDC",
+   o:"Missões de fim de jogo do Reino Chuchoku.", req:"Reino Chuchoku.", rec:"Muito XP e fichas.", dica:"", src:MW+"annexes/quetes-royaume-chuchoku-mdc/"},
+  {id:"ereboriamdc", t:"side", lv:215, s:"Ereboria MDC", pt:"MDCs de Ereboria", fr:"Quêtes – Ereboria – MDC",
+   o:"Cadeias Emprisonnés e Steamers.", req:"Ereboria.", rec:"Cerca de 184 milhões de XP por etapa e 8 a 20 Jetons Infernaux.", dica:"Uma das melhores fontes de XP antes do 230.", src:MW+"annexes/quetes-ereboria-mdc/"}
+];
+
+const ACTS = [
+  {n:1, name:"Primeiros passos", from:1,   to:19,  c:"--a1", ic:"tree"},
+  {n:2, name:"As Nações",        from:20,  to:95,  c:"--a2", ic:"tower"},
+  {n:3, name:"Mundo afora",      from:96,  to:170, c:"--a3", ic:"dune"},
+  {n:4, name:"Fim de jogo",      from:171, to:245, c:"--a4", ic:"star"}
+];
+const actOf = lv => ACTS.find(a => lv >= a.from && lv <= a.to) || ACTS[3];
+const XP = [
+  {to:95,  txt:"Guia de XP 0–95 do Method: lista as famílias de monstros e as dungeons de cada faixa. Junte Almanax, Tristepin, Otomaï e os mercenários de Astrub.", url:"https://methodwakfu.com/bien-debuter/niveau-0-95/"},
+  {to:170, txt:"Guia de XP 96–170 do Method. A partir do 120 você ganha 30 de sabedoria e prospecção nativas; aproveite Sberg, Wabbits e a Pandalousie (141).", url:"https://methodwakfu.com/bien-debuter/niveau-96-170/"},
+  {to:230, txt:"Guia de XP 171–245 do Method. Pandalousie (171 e 186), Tombeau de Pandala (186–200), Chuchoku MDC (201) e Ereboria MDC (215) rendem muito.", url:"https://methodwakfu.com/bien-debuter/niveau-171-245/"},
+  {to:245, txt:"Île des Brumes: Primassifs, Clan de Bworkana, Machines de Nox, Savanestraux e Férociraptors (231–245), mais a Chasse aux Boss 231 à 245.", url:"https://methodwakfu.com/bien-debuter/niveau-171-245/"}
+];
+const TIPS = [
+  {ic:"cal", h:"Almanax todo dia", p:"A partir do nível 10, a quest diária do Almanax dá XP e kamas. É o hábito que mais soma ao longo do jogo."},
+  {ic:"range", h:"Monstros até 35 níveis de diferença", p:"Quanto mais alto o monstro, mais XP. Segundo o Method, até ±35 níveis você ganha 100% do XP. Um guia antigo do fórum oficial fala em ±10, então confira no jogo."},
+  {ic:"owl", h:"Sabedoria é XP", p:"Cada ponto de sabedoria dá +1% de XP. No nível 120 você ganha 30 de sabedoria e 30 de prospecção nativas, mas uma dungeon modulada para nível baixo só dá 10."},
+  {ic:"bow", h:"Otomaï do 20 ao 230", p:"A cadeia dos Discípulos de Otomaï escala com o seu nível e dá peças Éclaireurs d'Otomaï. Volte nela a cada faixa nova."},
+  {ic:"map", h:"Principais em ordem de nível", p:"O Method recomenda seguir as principais pela ordem de nível. As exceções são as MDCs de Ereboria, que podem ser feitas em qualquer ordem."},
+  {ic:"key", h:"Prepare a Île des Brumes", p:"A ilha do 230 exige a Éliocalypse (126–186) e a Shukrute concluídas. Avance nas duas antes de chegar lá."}
+];
+
+/* ---------- Estado salvo ---------- */
+const KEY_DONE="wk-jornada-feitas", KEY_LV="wk-jornada-nivel", KEY_TH="wk-jornada-tema";
+function load(k,def){ try{ const v=localStorage.getItem(k); return v==null?def:JSON.parse(v); }catch(e){ return def; } }
+function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+let done = load(KEY_DONE,{}); if(typeof done!=="object"||!done) done={};
+let level = Math.min(245, Math.max(1, parseInt(load(KEY_LV,1),10)||1));
+let filter = "all";
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const lvTxt = q => q.to ? q.lv+"–"+q.to : String(q.lv);
+const typeChip = q => q.t==="main" ? '<span class="chip c-main">principal</span>' : q.t==="dim" ? '<span class="chip c-dim">dimensão</span>' : '<span class="chip c-side">secundária</span>';
+const unsureChip = q => q.u ? '<span class="chip c-unsure">a confirmar</span>' : "";
+const cssVar = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+/* ---------- Ícones (desenhos simples) ---------- */
+const ICON = {
+  tree:  c=>`<g><rect x="14" y="20" width="6" height="12" rx="1" fill="${c}" opacity=".7"/><circle cx="17" cy="14" r="10" fill="${c}"/><circle cx="11" cy="18" r="6" fill="${c}" opacity=".85"/><circle cx="23" cy="18" r="6" fill="${c}" opacity=".85"/></g>`,
+  tower: c=>`<g fill="${c}"><rect x="9" y="12" width="16" height="20" rx="1"/><path d="M7 13 L17 2 L27 13Z"/><rect x="15" y="22" width="4" height="10" fill="var(--paper)"/><path d="M2 32 q4 -4 8 0 t8 0 t8 0 t8 0" stroke="${c}" stroke-width="2" fill="none" opacity=".6"/></g>`,
+  dune:  c=>`<g fill="${c}"><path d="M0 32 Q9 16 18 26 Q26 18 34 32Z" opacity=".75"/><rect x="22" y="6" width="4" height="18" rx="2"/><rect x="17" y="11" width="3" height="8" rx="1.5"/><rect x="28" y="9" width="3" height="7" rx="1.5"/><circle cx="8" cy="7" r="4" opacity=".6"/></g>`,
+  star:  c=>`<g fill="${c}"><path d="M17 2 L20.5 12.5 L31 13 L22.5 19.5 L25.5 30 L17 24 L8.5 30 L11.5 19.5 L3 13 L13.5 12.5Z"/><circle cx="29" cy="4" r="2" opacity=".6"/><circle cx="4" cy="28" r="1.6" opacity=".6"/></g>`,
+  cal:   c=>`<g fill="none" stroke="${c}" stroke-width="2.4"><rect x="4" y="7" width="26" height="23" rx="3"/><path d="M4 14h26M11 3v7M23 3v7"/><path d="M11 21l4 4 8-8"/></g>`,
+  range: c=>`<g fill="none" stroke="${c}" stroke-width="2.4"><path d="M3 17h28M3 17l5-5M3 17l5 5M31 17l-5-5M31 17l-5 5"/><circle cx="17" cy="17" r="4" fill="${c}"/></g>`,
+  owl:   c=>`<g fill="none" stroke="${c}" stroke-width="2.4"><path d="M6 6l5 4h12l5-4v14a11 11 0 0 1-22 0z"/><circle cx="12.5" cy="17" r="3.2"/><circle cx="21.5" cy="17" r="3.2"/><path d="M15.5 23l1.5 2 1.5-2"/></g>`,
+  bow:   c=>`<g fill="none" stroke="${c}" stroke-width="2.4"><path d="M8 3c12 4 16 16 12 28"/><path d="M8 3l12 28"/><path d="M4 18h24M24 14l4 4-4 4"/></g>`,
+  map:   c=>`<g fill="none" stroke="${c}" stroke-width="2.4"><path d="M3 7l9-3 10 3 9-3v23l-9 3-10-3-9 3z"/><path d="M12 4v23M22 7v23"/></g>`,
+  key:   c=>`<g fill="none" stroke="${c}" stroke-width="2.4"><circle cx="11" cy="17" r="6"/><path d="M17 17h14M26 17v5M30 17v4"/></g>`
+};
+const iconSvg = (name,color,size=34) => `<svg viewBox="0 0 34 34" width="${size}" height="${size}" aria-hidden="true">${ICON[name](color)}</svg>`;
+
+/* ---------- Mapa ---------- */
+const MAP = Q.filter(q => q.t!=="side");
+function drawMap(){
+  const svg = $("#map"), W=1000, rows=3, per=Math.ceil(MAP.length/rows);
+  const xL=70, xR=930, ys=[110,320,530];
+  const pts = MAP.map((q,i)=>{
+    const r=Math.floor(i/per), k=i%per, n=Math.min(per, MAP.length-r*per);
+    const f = n>1 ? k/(n-1) : .5;
+    const x = r%2===0 ? xL+f*(xR-xL) : xR-f*(xR-xL);
+    const y = ys[r] + (k%2 ? 22 : -14);
+    return {x,y,q,r};
+  });
+  // Trilha: Catmull-Rom, com pontos de curva fora das bordas nas viradas de linha
+  const via=[];
+  pts.forEach((p,i)=>{
+    via.push(p);
+    const nx=pts[i+1];
+    if(nx && nx.r!==p.r){ const side = p.r%2===0 ? 985 : 15; via.push({x:side,y:(p.y+nx.y)/2,turn:true}); }
+  });
+  let d=`M${via[0].x},${via[0].y}`;
+  for(let i=0;i<via.length-1;i++){
+    const p0=via[i-1]||via[i], p1=via[i], p2=via[i+1], p3=via[i+2]||p2;
+    const c1x=p1.x+(p2.x-p0.x)/6, c1y=p1.y+(p2.y-p0.y)/6, c2x=p2.x-(p3.x-p1.x)/6, c2y=p2.y-(p3.y-p1.y)/6;
+    d+=` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x},${p2.y}`;
+  }
+  // Enfeites entre as linhas, com o desenho do ato do nó mais próximo
+  let deco="";
+  const seeds=[[40,30],[180,22],[330,34],[500,24],[660,30],[820,22],[960,36],
+               [110,215],[270,205],[430,222],[590,208],[750,218],[900,206],
+               [60,425],[220,415],[380,430],[540,418],[700,428],[860,416],
+               [150,615],[420,612],[680,616],[930,610]];
+  seeds.forEach(([x,y],i)=>{
+    let best=pts[0],bd=1e9; pts.forEach(p=>{const dd=(p.x-x)**2+(p.y-y)**2; if(dd<bd){bd=dd;best=p;}});
+    const a=actOf(best.q.lv), s=.7+((i*37)%5)/10;
+    deco+=`<g transform="translate(${x-17*s},${y-17*s}) scale(${s})" opacity=".32">${ICON[a.ic](`var(${a.c})`)}</g>`;
+  });
+  // Nós
+  let nodes="";
+  pts.forEach((p,i)=>{
+    const q=p.q, a=actOf(q.lv), isDone=!!done[q.id], avail=q.lv<=level && !isDone, fut=q.lv>level && !isDone;
+    const col=`var(${a.c})`, below = i%2===0;
+    const ly = below ? p.y+38 : p.y-30;
+    const label = esc(q.s)+(q.u?" ?":"");
+    nodes+=`<g class="node${fut?" future":""}" tabindex="0" role="button" data-id="${q.id}" aria-label="${esc(q.pt)}, nível ${lvTxt(q)}${isDone?", feita":""}">
+      ${avail?`<circle class="pulse" cx="${p.x}" cy="${p.y}" r="18" fill="none" stroke="${col}" stroke-width="3"/>`:""}
+      <circle class="dot" cx="${p.x}" cy="${p.y}" r="18" fill="${isDone?col:"var(--paper)"}" stroke="${col}" stroke-width="3.5" ${q.t==="dim"?'stroke-dasharray="5 3"':""}/>
+      <text x="${p.x}" y="${p.y+4.5}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12.5" font-weight="700" fill="${isDone?"var(--paper)":col}">${q.lv}</text>
+      <text x="${p.x}" y="${ly}" text-anchor="middle" font-family="Atkinson Hyperlegible, sans-serif" font-size="13" font-weight="700" fill="var(--ink)" paint-order="stroke" stroke="var(--map)" stroke-width="4">${label}</text>
+    </g>`;
+  });
+  // Alfinete do nível
+  let pin="";
+  let j=-1; for(let i=0;i<pts.length;i++){ if(pts[i].q.lv<=level) j=i; }
+  let px,py;
+  if(j<0){ px=pts[0].x-40; py=pts[0].y; }
+  else if(j===pts.length-1){ px=pts[j].x; py=pts[j].y; }
+  else{
+    const a=pts[j], b=pts[j+1], span=b.q.lv-a.q.lv, t= span>0 ? Math.min(1,(level-a.q.lv)/span) : 0;
+    if(a.r!==b.r){ px=a.x; py=a.y; } else { px=a.x+(b.x-a.x)*t; py=a.y+(b.y-a.y)*t; }
+  }
+  // Alfinete pequeno sobre a trilha; a etiqueta vai numa pílula acima, por cima dos nomes
+  const lbl=`Você · ${level}`, lw=lbl.length*7.6+18;
+  pin=`<g transform="translate(${px},${py})" pointer-events="none">
+      <line x1="0" y1="-8" x2="0" y2="-70" stroke="var(--side)" stroke-width="2.5"/>
+      <circle cx="0" cy="0" r="8" fill="var(--side)" stroke="var(--paper)" stroke-width="3"/>
+      <rect x="${-lw/2}" y="-92" width="${lw}" height="24" rx="12" fill="var(--side)"/>
+      <text x="0" y="-75.5" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12.5" font-weight="700" fill="var(--paper)">${lbl}</text>
+    </g>`;
+  svg.innerHTML = `${deco}
+    <path d="${d}" fill="none" stroke="var(--path)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${d}" fill="none" stroke="var(--paper)" stroke-width="2.5" stroke-dasharray="2 10" stroke-linecap="round" opacity=".9"/>
+    ${nodes}${pin}`;
+  svg.querySelectorAll(".node").forEach(g=>{
+    g.addEventListener("click",()=>openDrawer(g.dataset.id));
+    g.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); openDrawer(g.dataset.id); }});
+  });
+}
+function drawLegend(){
+  $("#legend").innerHTML = ACTS.map(a=>`<span><i class="sw" style="background:var(${a.c})"></i>Ato ${a.n} · ${a.name} (${a.from}–${a.to})</span>`).join("")
+    + `<span><svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="7" fill="none" stroke="var(--mute)" stroke-width="2" stroke-dasharray="3 2"/></svg>dimensão</span>`
+    + `<span><svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="7" fill="var(--mute)"/></svg>feita</span>`
+    + `<span>? = a confirmar</span>`;
+}
+
+/* ---------- Seu nível ---------- */
+function drawNow(){
+  const a=actOf(level);
+  $("#actTag").textContent=`Ato ${a.n} · ${a.name}`;
+  $("#actTag").style.background=`var(${a.c}-soft)`; $("#actTag").style.color=`var(${a.c})`;
+  const rank = q => (q.t==="side"?1:0);
+  const now = Q.filter(q=>q.lv<=level && !done[q.id] && !(q.to && q.to<level-40 && q.t==="side"))
+               .sort((x,y)=>rank(x)-rank(y) || x.lv-y.lv);
+  const next = Q.filter(q=>q.lv>level && q.lv<=level+20 && !done[q.id]).sort((x,y)=>x.lv-y.lv);
+  const li = q => `<li><button type="button" data-id="${q.id}"><span class="lv">nv ${lvTxt(q)}</span><span class="nm">${esc(q.pt)}${q.u?' <span class="chip c-unsure">?</span>':""}</span>${q.t==="side"?'<span class="chip c-side">sec.</span>':""}</button></li>`;
+  const cap = (arr,n) => arr.slice(0,n).map(li).join("") + (arr.length>n?`<li class="empty">e mais ${arr.length-n} na linha do tempo abaixo</li>`:"");
+  $("#listNow").innerHTML = now.length ? cap(now,7) : `<li class="empty">Nada pendente até o nível ${level}. Bom trabalho!</li>`;
+  $("#listNext").innerHTML = next.length ? cap(next,7) : `<li class="empty">Nada novo nos próximos 20 níveis.</li>`;
+  const x = XP.find(t=>level<=t.to) || XP[XP.length-1];
+  $("#xpTip").innerHTML = `<p>${esc(x.txt)}</p><p style="margin-top:8px"><a href="${x.url}" target="_blank" rel="noopener">Abrir o guia de XP do Method</a></p>`;
+  document.querySelectorAll("#listNow button,#listNext button").forEach(b=>b.addEventListener("click",()=>openDrawer(b.dataset.id)));
+  $("#fNow").textContent = Q.filter(q=>q.lv<=level && !done[q.id]).length;
+  $("#fLevel").textContent = level;
+}
+
+/* ---------- Linha do tempo ---------- */
+function drawTimeline(){
+  const hide=$("#hideDone").checked, near=$("#nearOnly").checked;
+  const list = Q.filter(q => (filter==="all" || (filter==="main" ? q.t!=="side" : q.t==="side"))
+                         && !(hide && done[q.id]) && !(near && q.lv>level+20))
+               .sort((x,y)=>x.lv-y.lv || (x.t==="side")-(y.t==="side"));
+  let html="";
+  ACTS.forEach(a=>{
+    const items=list.filter(q=>actOf(q.lv).n===a.n);
+    if(!items.length) return;
+    html+=`<div class="act" style="color:var(${a.c})">
+      <div class="act-head">${iconSvg(a.ic,`var(${a.c})`)}<h3>Ato ${a.n} · ${a.name}</h3><span class="range">nível ${a.from}–${a.to}</span></div>
+      <ul class="rows" style="color:var(--ink)">${items.map(q=>{
+        const st = done[q.id] ? "done" : (q.lv<=level ? "now" : "");
+        return `<li class="row ${st}">
+          <input type="checkbox" data-ck="${q.id}" ${done[q.id]?"checked":""} aria-label="Marcar ${esc(q.pt)} como feita">
+          <span class="rl">nv ${lvTxt(q)}</span>
+          <button type="button" class="row-main" data-id="${q.id}"><span class="rn">${esc(q.pt)}<span class="rf">${esc(q.fr)}</span></span></button>
+          <span class="chips">${typeChip(q)}${unsureChip(q)}<button type="button" class="open-btn" data-id="${q.id}">Ficha</button></span>
+        </li>`;}).join("")}</ul></div>`;
+  });
+  $("#timeline").innerHTML = html || `<p class="empty">Nenhuma etapa com esses filtros.</p>`;
+  $("#timeline").querySelectorAll("[data-ck]").forEach(c=>c.addEventListener("change",()=>setDone(c.dataset.ck,c.checked)));
+  $("#timeline").querySelectorAll("button[data-id]").forEach(b=>b.addEventListener("click",()=>openDrawer(b.dataset.id)));
+}
+
+function drawFacts(){
+  const mains=Q.filter(q=>q.t!=="side"), sides=Q.filter(q=>q.t==="side");
+  const dm=mains.filter(q=>done[q.id]).length, ds=sides.filter(q=>done[q.id]).length;
+  $("#fMain").textContent=`${dm} / ${mains.length}`; $("#bMain").style.width=(100*dm/mains.length)+"%";
+  $("#fSide").textContent=`${ds} / ${sides.length}`; $("#bSide").style.width=(100*ds/sides.length)+"%";
+}
+function drawTips(){
+  $("#tips").innerHTML = TIPS.map((t,i)=>{ const c=["--a1","--a2","--a3","--a4","--side","--a2"][i]; return `<div class="tip">${iconSvg(t.ic,`var(${c})`,30)}<h3>${esc(t.h)}</h3><p>${esc(t.p)}</p></div>`; }).join("");
+}
+function renderAll(){ drawFacts(); drawNow(); drawMap(); drawTimeline(); if(openId) fillDrawer(openId); }
+
+function setDone(id,val){ if(val) done[id]=true; else delete done[id]; save(KEY_DONE,done); renderAll(); }
+function setLevel(v){
+  level=Math.min(245,Math.max(1,parseInt(v,10)||1));
+  $("#lvRange").value=level; $("#lvNum").value=level; save(KEY_LV,level); renderAll();
+}
+
+/* ---------- Ficha ---------- */
+let openId=null, lastFocus=null;
+const ORDER = () => Q.slice().sort((x,y)=>x.lv-y.lv || (x.t==="side")-(y.t==="side"));
+function fillDrawer(id){
+  const q=Q.find(x=>x.id===id); if(!q) return;
+  const a=actOf(q.lv);
+  $("#drEye").textContent=`Ato ${a.n} · ${a.name} · nível ${lvTxt(q)}`;
+  $("#drEye").style.color=`var(${a.c})`;
+  $("#drTitle").textContent=q.pt; $("#drFr").textContent=q.fr;
+  $("#drChips").innerHTML=typeChip(q)+unsureChip(q)+(q.lv<=level?'<span class="chip" style="background:var(--a1-soft);color:var(--ok)">liberada no seu nível</span>':`<span class="chip" style="background:var(--soft);color:var(--mute)">faltam ${q.lv-level} níveis</span>`);
+  $("#drCheck").checked=!!done[q.id];
+  const rows=[["O que é",q.o],["Pré-requisito",q.req],["Recompensas",q.rec]]; if(q.dica) rows.push(["Dica",q.dica]);
+  if(q.u) rows.push(["Atenção","Nível e detalhes vieram de um resumo do catálogo do WakfuLabs. Confira no jogo antes de planejar em cima disso."]);
+  $("#drDl").innerHTML=rows.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("");
+  $("#drLink").innerHTML=`<a href="${q.src}" target="_blank" rel="noopener">Abrir o guia desta etapa (${q.src.includes("methodwakfu")?"Method Wakfu":"WakfuLabs"})</a>`;
+}
+function openDrawer(id){
+  if(!openId) lastFocus=document.activeElement;
+  openId=id; fillDrawer(id);
+  $("#drawer").classList.add("on"); $("#scrim").classList.add("on"); $("#drawer").setAttribute("aria-hidden","false");
+  $("#drClose").focus();
+}
+function closeDrawer(){
+  openId=null; $("#drawer").classList.remove("on"); $("#scrim").classList.remove("on"); $("#drawer").setAttribute("aria-hidden","true");
+  if(lastFocus && document.contains(lastFocus)) lastFocus.focus();
+}
+function step(dir){ const o=ORDER(), i=o.findIndex(q=>q.id===openId); const n=o[i+dir]; if(n) openDrawer(n.id); }
+
+/* ---------- Tema ---------- */
+function applyTheme(t){
+  if(t) document.documentElement.setAttribute("data-theme",t); else document.documentElement.removeAttribute("data-theme");
+  const dark = t ? t==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  $("#themeBtn").textContent = dark ? "Modo claro" : "Modo escuro";
+}
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+  const nt = cur==="dark"?"light":"dark"; save(KEY_TH,nt); applyTheme(nt);
+}
+
+/* ---------- Ligações ---------- */
+applyTheme(load(KEY_TH,null));
+$("#themeBtn").addEventListener("click",toggleTheme);
+$("#lvRange").addEventListener("input",e=>setLevel(e.target.value));
+$("#lvNum").addEventListener("change",e=>setLevel(e.target.value));
+document.querySelectorAll(".seg button").forEach(b=>b.addEventListener("click",()=>{
+  filter=b.dataset.f; document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed", String(x===b))); drawTimeline();
+}));
+$("#hideDone").addEventListener("change",drawTimeline);
+$("#nearOnly").addEventListener("change",drawTimeline);
+$("#resetBtn").addEventListener("click",()=>{ if(confirm("Desmarcar todas as etapas?")){ done={}; save(KEY_DONE,done); renderAll(); }});
+$("#drClose").addEventListener("click",closeDrawer);
+$("#scrim").addEventListener("click",closeDrawer);
+$("#drCheck").addEventListener("change",e=>{ if(openId) setDone(openId,e.target.checked); });
+$("#drPrev").addEventListener("click",()=>step(-1));
+$("#drNext").addEventListener("click",()=>step(1));
+document.addEventListener("keydown",e=>{
+  const typing = /INPUT|TEXTAREA|SELECT/.test((e.target.tagName||"")) && e.target.type!=="checkbox";
+  if(e.key==="Escape" && openId){ closeDrawer(); return; }
+  if(openId && !typing && (e.key==="ArrowRight"||e.key==="ArrowLeft")){ e.preventDefault(); step(e.key==="ArrowRight"?1:-1); return; }
+  if(!typing && (e.key==="d"||e.key==="D") && !e.ctrlKey && !e.metaKey && !e.altKey) toggleTheme();
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>applyTheme(document.documentElement.getAttribute("data-theme")));
+
+$("#lvRange").value=level; $("#lvNum").value=level;
+drawLegend(); drawTips(); renderAll();
+</script>
+</body>
+</html>

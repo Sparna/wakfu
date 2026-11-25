@@ -26,7 +26,11 @@ A branch `main` é protegida: ninguém envia commits direto para ela. Toda mudan
 ## Quem pode criar branches aqui
 
 - **Colaboradores** (adicionados em Settings → Collaborators) criam branches direto neste repositório.
-- **Qualquer outra pessoa** faz um fork, cria a branch no fork e abre o pull request daqui.
+- **Qualquer outra pessoa** contribui por fork:
+  1. Faça o fork em https://github.com/Sparna/wakfu/fork.
+  2. Crie a branch e faça as alterações no seu fork.
+  3. Abra o pull request para a `main` deste repositório em https://github.com/Sparna/wakfu/compare (marque "compare across forks").
+  4. Acompanhe a revisão em https://github.com/Sparna/wakfu/pulls.
 
 ## Sobre o guia
 

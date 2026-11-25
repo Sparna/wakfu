@@ -269,6 +269,21 @@ kbd{font-family:var(--f-display);font-size:.82em;border:1px solid currentColor;b
 .dr-nav button{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:6px 12px;font-size:.9rem}
 @media (max-width:640px){ .drawer{top:auto;bottom:0;height:86%;width:100%;border-left:0;border-top:4px solid var(--frame);border-radius:18px 18px 0 0;transform:translateY(105%)} }
 
+/* Aviso da primeira visita: convite para contribuir */
+.invite{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:max(18px,env(safe-area-inset-bottom,0px));z-index:60;width:min(380px,calc(100% - 32px));background:var(--paper);color:var(--ink);border:1px solid var(--line);border-top:4px solid var(--brand);border-radius:16px;box-shadow:0 14px 40px rgba(0,0,0,.25);padding:18px 18px 16px;display:flex;flex-direction:column;gap:10px;animation:invIn .3s ease}
+.invite h2{font-family:var(--f-display);font-size:1.22rem;line-height:1.2;text-wrap:balance;padding-right:34px;margin:0}
+.invite p{margin:0;color:var(--mute);font-size:.94rem;line-height:1.45}
+.invite .close{position:absolute;top:10px;right:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:99px;width:32px;height:32px;font-size:1.05rem;line-height:1}
+.invite .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
+.invite .acts a,.invite .acts button{display:inline-flex;align-items:center;gap:6px;border-radius:99px;height:36px;padding:0 14px;font-size:.9rem;text-decoration:none;font-weight:600}
+.invite .go{background:var(--brand);color:var(--on-brand);border:1px solid var(--brand)}
+.invite .alt{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.invite .later{background:none;border:0;color:var(--mute);padding:0 6px;font-weight:500}
+.invite svg{width:17px;height:17px;flex:none}
+@keyframes invIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){ .invite{animation:none} }
+@media (max-width:640px){ .invite{left:16px;right:16px;width:auto;bottom:max(16px,env(safe-area-inset-bottom,0px))} }
+
 /* Menu lateral do guia: fixo em telas largas, gaveta no celular */
 :root{--sbw:308px}
 .slide{container-type:inline-size}
@@ -440,6 +455,17 @@ kbd{font-family:var(--f-display);font-size:.82em;border:1px solid currentColor;b
     <div class="dr-nav"><button type="button" id="drPrev">← Anterior</button><button type="button" id="drNext">Próxima →</button></div>
   </div>
 </aside>
+
+<section class="invite" id="invite" role="dialog" aria-labelledby="invTitle" hidden>
+  <button class="close" id="invClose" type="button" aria-label="Fechar o aviso">×</button>
+  <h2 id="invTitle">Quer ajudar a alimentar e evoluir o projeto?</h2>
+  <p>O guia é aberto no GitHub. Faça um fork, corrija ou acrescente o que quiser e mande um pull request: cada contribuição é revisada antes de entrar.</p>
+  <div class="acts">
+    <a class="go" href="https://github.com/Sparna/wakfu/fork" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="5" r="2"/><circle cx="18" cy="5" r="2"/><circle cx="12" cy="19" r="2"/><path d="M6 7v2a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V7M12 12v5"/></svg>Fazer um fork</a>
+    <a class="alt" href="https://github.com/Sparna/wakfu/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Como contribuir</a>
+    <button class="later" type="button" id="invLater">Agora não</button>
+  </div>
+</section>
 
 <div class="contents-scrim" id="contentsScrim"></div>
 <aside class="gnav" id="contentsDrawer" aria-labelledby="contentsTitle">
@@ -1436,6 +1462,7 @@ document.addEventListener("keydown",e=>{
   const typing = (tag==="INPUT" && t.type!=="checkbox") || tag==="TEXTAREA" || tag==="SELECT";
   if(e.ctrlKey||e.metaKey||e.altKey) return;
   if(e.key==="Escape"){
+    if(!$("#invite").hidden){ closeInvite(); return; }
     if(t.id==="navFind" && t.value){ t.value=""; filterNav(); return; }
     if(navIsDrawerOpen()){ closeContents(); return; } if(openId){ closeDrawer(); return; } if($("#ov").classList.contains("on")){ closeOv(); return; }
     if(t.id==="navFind"){ t.blur(); return; } }
@@ -1470,6 +1497,14 @@ deck.addEventListener("touchend",e=>{
 },{passive:true});
 
 window.addEventListener("hashchange",()=>{ const n=parseInt(location.hash.slice(1),10); if(n>=1 && n<=S.length && n-1!==cur) go(n-1); });
+
+/* ---------- Aviso da primeira visita ---------- */
+const KEY_INV="wk-jornada-aviso";
+function closeInvite(){ $("#invite").hidden=true; save(KEY_INV,1); }
+$("#invClose").addEventListener("click",closeInvite);
+$("#invLater").addEventListener("click",closeInvite);
+$("#invite").querySelectorAll("a").forEach(a=>a.addEventListener("click",closeInvite));
+if(!load(KEY_INV,0)) setTimeout(()=>{ $("#invite").hidden=false; },700);
 
 /* ---------- Início ---------- */
 applyTheme(load(KEY_TH,null));

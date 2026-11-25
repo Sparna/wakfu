@@ -21,7 +21,7 @@ A branch `main` é protegida: ninguém envia commits direto para ela. Toda mudan
    git push -u origin feat/nome-da-mudanca
    ```
 4. No GitHub, abra um pull request da sua branch para a `main`.
-5. O dono do repositório revisa. Depois da aprovação, o PR é integrado à `main`.
+5. O dono do repositório (Sparna) revisa. **Só ele pode fazer o merge na `main`**: a regra em `.github/rulesets/proteger-main.json` bloqueia qualquer outra atualização dela, inclusive de colaboradores.
 
 ## Quem pode criar branches aqui
 
